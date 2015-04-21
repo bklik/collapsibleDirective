@@ -56,7 +56,7 @@ angular.module('collapsibleDirective', ['styleSheetFactory'])
 
             // Finds the maximum height of the collapsible element, and stores the value
             // as an attribute on the element.
-            var setMaxHeight = function(){
+            var setMaxHeight = function(offset){
                 var element = $element[0];
 
                 // Remove the current style.
@@ -64,7 +64,8 @@ angular.module('collapsibleDirective', ['styleSheetFactory'])
 
                 // Get the height of the element.
                 var height = window.getComputedStyle(element, null).getPropertyValue('height');
-                
+                    height = (!(typeof offset === 'undefined')) ? (offset + parseInt(height)) + 'px' : height;
+
                 // Set the attribute with the new computed height.
                 element.setAttribute('maxheight', height);
 
@@ -79,20 +80,27 @@ angular.module('collapsibleDirective', ['styleSheetFactory'])
             // Catch any broadcast to resize a collapsible, and perform it if it's the target.
             $scope.$on('resizeCollapsible', function($event, $args) {
                 if($element[0].id == $args.id) {
-                    setMaxHeight();
+                    setMaxHeight($args.offset);
                 }
             });
 
             $scope.toggleCollapsible = function(id) {
                 var element = document.querySelector('#'+id);
 
-                var curHeight = window.getComputedStyle(element, null).getPropertyValue('height');
-
                 if(element.getAttribute('collapse') == 'true') {
                     element.setAttribute('style',
                         'max-height: '+element.getAttribute('maxheight')+';'
                     );
                     element.setAttribute('collapse', 'false');
+
+                    // If collapsible nested, apply an offset to any aprent collapsibles
+                    var parent = element.parentNode;
+                    while(parent.classList) {
+                        if(parent.classList.contains('collapsible')) {
+                            $scope.$broadcast('resizeCollapsible', {'id': parent.id, 'offset': parseInt(element.getAttribute('maxheight'))})
+                        }
+                        var parent = parent.parentNode;
+                    }
                 } else {
                     element.setAttribute('style',
                         'max-height: 0px;'
