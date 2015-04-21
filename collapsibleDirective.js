@@ -64,7 +64,7 @@ angular.module('collapsibleDirective', ['styleSheetFactory'])
 
                 // Get the height of the element.
                 var height = window.getComputedStyle(element, null).getPropertyValue('height');
-                    height = (!(typeof offset === 'undefined')) ? (offset + parseInt(height)) + 'px' : height;
+                    height = (!(typeof offset === 'undefined')) ? (offset + parseFloat(height)) + 'px' : height;
 
                 // Set the attribute with the new computed height.
                 element.setAttribute('maxheight', height);
@@ -97,7 +97,7 @@ angular.module('collapsibleDirective', ['styleSheetFactory'])
                     var parent = element.parentNode;
                     while(parent.classList) {
                         if(parent.classList.contains('collapsible')) {
-                            $scope.$broadcast('resizeCollapsible', {'id': parent.id, 'offset': parseInt(element.getAttribute('maxheight'))})
+                            $scope.$broadcast('resizeCollapsible', {'id': parent.id, 'offset': parseFloat(element.getAttribute('maxheight'))})
                         }
                         var parent = parent.parentNode;
                     }
