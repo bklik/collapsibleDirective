@@ -107,10 +107,6 @@ angular.module('collapsibleDirective', ['styleSheetFactory'])
                         }
                     }, 50);
                 },
-
-                test: function(h) {
-                    console.log('worked: ' + h);
-                }
             }
 
             window.addEventListener('resize', $scope.api.setMaxHeight);
