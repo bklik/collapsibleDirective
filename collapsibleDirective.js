@@ -11,8 +11,11 @@
 /**********************************************************************/
 angular.module('collapsibleDirective', ['styleSheetFactory'])
 
-.directive('collapsible', ['$timeout', 'styleSheetFactory', function($timeout, styleSheetFactory) {
+.directive('collapsibleDirective', ['$timeout', 'styleSheetFactory', function($timeout, styleSheetFactory) {
     return {
+        scope: {
+            api: '='
+        },
         restrict: 'E',
         link: function($scope, $element, $attrs) {
             // Tracks when a touch event fires before a mouse event.
@@ -30,84 +33,91 @@ angular.module('collapsibleDirective', ['styleSheetFactory'])
             // Initialize function for the directive that gets called at the end.
             var init = function() {
                 // Add this directive's styles to the document's stylesheet.
-                styleSheetFactory.addCSSRule(styleSheet, 'collapsible',
+                var cssAdded = styleSheetFactory.addCSSRule(styleSheet, 'collapsible-directive',
                     'display: block;' +
                     'overflow: hidden;' +
                     '-'+prefix+'-transition: max-height ease '+animationLength+'ms;' +
                     'transition: max-height ease '+animationLength+'ms;'
                 , 1);
 
-                // Set the initial max height for the element.
-                setMaxHeight();
+                var cssAdded = styleSheetFactory.addCSSRule(styleSheet, 'collapsible-directive.collapse',
+                    'max-height: 0 !important;'
+                , 1);
 
-                // Set the initial state for the element.
-                if($attrs.collapse == 'true') {
-                    $element[0].setAttribute('style',
-                        'max-height: 0px;'
-                    );
-                } else {
-                    $element[0].setAttribute('style',
-                        'max-height: '+$element[0].getAttribute('maxheight')+';'
-                    );
+                // Collapse if 'collapse' attribute set to true.
+                $scope.collapse = ($attrs.collapse == 'true') ? true : false;
+                if($scope.collapse) {
+                    $element.addClass('collapse');
                 }
 
-                $element.addClass('collapsible');
-            }
-
-            // Finds the maximum height of the collapsible element, and stores the value
-            // as an attribute on the element.
-            var setMaxHeight = function(offset){
-                var element = $element[0];
-
-                // Remove the current style.
-                element.setAttribute('style', '');
-
-                // Get the height of the element.
-                var height = window.getComputedStyle(element, null).getPropertyValue('height');
-                    height = (!(typeof offset === 'undefined')) ? (offset + parseFloat(height)) + 'px' : height;
-
-                // Set the attribute with the new computed height.
-                element.setAttribute('maxheight', height);
-
-                // If the element was collapsed, hide it again. Otherwise, give it the new height.
-                if(element.getAttribute('collapse') == 'true') {
-                    element.setAttribute('style', 'max-height: 0px;');
-                } else {
-                    element.setAttribute('style', 'max-height: '+height+';');
-                }
-            }
-
-            // Catch any broadcast to resize a collapsible, and perform it if it's the target.
-            $scope.$on('resizeCollapsible', function($event, $args) {
-                if($element[0].id == $args.id) {
-                    setMaxHeight($args.offset);
-                }
-            });
-
-            $scope.toggleCollapsible = function(id) {
-                var element = document.querySelector('#'+id);
-
-                if(element.getAttribute('collapse') == 'true') {
-                    element.setAttribute('style',
-                        'max-height: '+element.getAttribute('maxheight')+';'
-                    );
-                    element.setAttribute('collapse', 'false');
-
-                    // If collapsible nested, apply an offset to any aprent collapsibles
-                    var parent = element.parentNode;
-                    while(parent.classList) {
-                        if(parent.classList.contains('collapsible')) {
-                            $scope.$broadcast('resizeCollapsible', {'id': parent.id, 'offset': parseFloat(element.getAttribute('maxheight'))})
-                        }
-                        var parent = parent.parentNode;
+                // Look for changes in the collapse attribute
+                $attrs.$observe('collapse', function(newValue) {
+                    newValue = (newValue == 'true') ? true : false;
+                    if(newValue != $scope.collapse) {
+                        $scope.api.toggle();
                     }
-                } else {
-                    element.setAttribute('style',
-                        'max-height: 0px;'
-                    );
-                    element.setAttribute('collapse', 'true');
+                });
+            }
+
+            $scope.api = {
+                // Finds the maximum height of the collapsible element, and stores the value
+                // as an attribute on the element.
+                setMaxHeight: function(offset){
+                    offset = parseInt(offset);
+                    offset = (offset + '' == 'NaN') ? 0 : offset;
+
+                    // Remove the current style.
+                    $element.removeClass('collapse');
+                    $element[0].setAttribute('style', '');
+
+                    // Get the height of the element.
+                    var height = window.getComputedStyle($element[0], null).getPropertyValue('height');
+                        height = (offset + parseFloat(height)) + 'px';
+
+                    $element[0].setAttribute('style', 'max-height: ' + height + ';');
+
+                    // If the element was collapsed, hide it again. Otherwise, give it the new height.
+                    if($scope.collapse) {
+                        $element.addClass('collapse');
+                    }
+
+                    return parseInt(height);
+                },
+
+                toggle: function() {
+                    var height = $scope.api.setMaxHeight();
+
+                    $timeout(function() {
+                        if($scope.collapse) {
+                            $element.removeClass('collapse');
+                            $scope.collapse = false;
+
+                            // Call parent collapsible's setMaxHeight with this collapsible's offset.
+                            var parent = $element.parent();
+                            while(parent.prop('tagName')) {
+                                if(parent.prop('tagName') == 'COLLAPSIBLE-DIRECTIVE') {
+                                    var api = parent.attr('api');
+                                    parent.scope()[api].setMaxHeight(height);
+                                }
+                                parent = parent.parent();
+                            }
+                        } else {
+                            $element.addClass('collapse');
+                            $scope.collapse = true;
+                        }
+                    }, 50);
+                },
+
+                test: function(h) {
+                    console.log('worked: ' + h);
                 }
             }
+
+            window.addEventListener('resize', $scope.api.setMaxHeight);
+
+            $scope.$on('destroy', function() {
+                window.removeEventListener($scope.api.setMaxHeight);
+            });
 
             // Initialize the directive
             init();
